@@ -1,4 +1,5 @@
 import ANSI;
+import haxe.Timer;
 
 class Particle {
 	public var x:Float;
@@ -11,7 +12,7 @@ class Particle {
 
 class Test {
 	
-	static private inline function println(s:String) {
+	static private function println(s:String = "") {
 		#if sys
 		Sys.stdout().writeString(s+"\n");
 		#else
@@ -21,13 +22,30 @@ class Test {
 	
 	static function main() {
 		
-		println(ANSI.title("ANSI Test (this should be the window title)"));
+		//ANSI.strip = true;
 		
-		println("Char >x< erased"+ANSI.setX(7)+ANSI.eraseChar());
-		println("Char >x< deleted"+ANSI.setX(7)+ANSI.deleteChar());
+		println("Available: "+ANSI.available);
+		println("Strip: "+(ANSI.strip ? "always" : ANSI.stripIfUnavailable ? "if not available" : "never"));
+		
+		println(ANSI.set(ANSI.attr.Green) + "green text");
+		
+		println(ANSI.set(Green) + "green text");
+		
+		println(
+			ANSI.set(Green, Bold) + "vivid green text" +
+			ANSI.set(DefaultForeground) + " bold text" +
+			ANSI.set(BoldOff)
+		);
+		
+		println("hello world" + ANSI.moveLeft(5) + ANSI.deleteChars(5) + "ansi");
+		
+		println(ANSI.title("Window title goes here"));
 		
 		#if sys
-		testParticles();
+		if (ANSI.available && !ANSI.strip) {
+			Sys.sleep(2);
+			testParticles();
+		}
 		#end
 		
 	}
@@ -85,7 +103,7 @@ class Test {
 			}
 			var cmd = "";
 			cmd += ANSI.eraseDisplay();
-			cmd += ANSI.set(Off, Green, Bold);
+			cmd += ANSI.set(Off, Green);
 			cmd += ANSI.set(Std.int(time/0.25) & 1 == 0 ? ReverseVideo : NormalVideo);
 			var header = "!ANSI PARTICLES!";
 			cmd += ANSI.moveRight(Math.round(cx-header.length/2+Math.sin(time*2)*(w-header.length)/2));
@@ -93,7 +111,7 @@ class Test {
 			cmd += ANSI.set(Off);
 			for (p in particles) {
 				if (p.x < 0 || p.x > w-1 || p.y < 0 || p.y > h-1) continue;
-				cmd += ANSI.setXY(Std.int(p.x), Std.int(p.y*pixelAspectRatio));
+				cmd += ANSI.setXY(Math.round(p.x), Math.round(p.y*pixelAspectRatio));
 				cmd += ANSI.aset(p.attr);
 				cmd += "o";
 			}

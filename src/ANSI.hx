@@ -3,6 +3,7 @@ package;
 import haxe.macro.Expr;
 
 using StringTools;
+using Lambda;
 
 enum Attribute {
 	Off;
@@ -61,6 +62,96 @@ class ANSI {
 	
 	public inline static var CSI:String = ESCAPE+"[";
 	
+	public static var attr = Attribute;
+	
+	private static var values:Map<Attribute, Int> = [
+		Off               => 0,
+		
+		Bold              => 1,
+		Underline         => 4,
+		Blink             => 5,
+		ReverseVideo      => 7,
+		Concealed         => 8,
+		
+		BoldOff           => 22,
+		UnderlineOff      => 24,
+		BlinkOff          => 25,
+		NormalVideo       => 27,
+		ConcealedOff      => 28,
+		
+		Black             => 30,
+		Red               => 31,
+		Green             => 32,
+		Yellow            => 33,
+		Blue              => 34,
+		Magenta           => 35,
+		Cyan              => 36,
+		White             => 37,
+		DefaultForeground => 39,
+		
+		BlackBack         => 40,
+		RedBack           => 41,
+		GreenBack         => 42,
+		YellowBack        => 43,
+		BlueBack          => 44,
+		MagentaBack       => 45,
+		CyanBack          => 46,
+		WhiteBack         => 47,
+		DefaultBackground => 49
+		
+	];
+	
+	public static var set:Dynamic;
+	public static var available:Bool;
+	public static var strip:Bool = false;
+	public static var stripIfUnavailable:Bool = true;
+	
+	public static function __init__() {
+		set = Reflect.makeVarArgs(aset);
+		available = detectSupport();
+	}
+	
+	@:ansi
+	public static function aset(attributes:Array<Dynamic>):String {
+		return CSI+[for (arg in attributes) {
+			if (!Std.is(arg, Attribute)) throw "Set argument is not an Attribute: "+arg;
+			values.get(arg);
+		}].join(";")+"m";
+	}
+
+	private static function detectSupport() {
+		#if sys
+		return if (!(new EReg ("window", "i").match(Sys.systemName()))) {
+			var result = -1;
+			try {
+				var process = new sys.io.Process("tput", [ "colors" ]);
+				result = process.exitCode ();
+				process.close ();
+			} catch (e:Dynamic) {};
+			result == 0;
+		} else {
+			Sys.getEnv ("ANSICON") != null;
+		}
+		#else
+		return false;
+		#end
+	}
+	
+	@:ansi
+	public inline static function title(str:String):String {
+		return ESCAPE+"]0;" + str + BELL;
+	}
+	
+	/*
+	public static function replaceLine():String {
+		return eraseLine()+moveToColumn();
+	}
+	
+	public static function replaceLastLine():String {
+		return moveUp()+eraseLine()+moveToColumn();
+	}
+	*/
+	
 	public static var sequences:Map<String, Sequence> = [
 	
 		"eraseDisplayToEnd"      => { val: CSI+ "J", doc: "Erase from cursor to the end of display." },
@@ -118,6 +209,31 @@ class ANSI {
 		var pos = haxe.macro.Context.currentPos();
 		var fields = haxe.macro.Context.getBuildFields();
 		
+		addSequences(pos, fields);
+		addStripConditionals(fields);
+		
+		return fields;
+	}
+	
+	static private function addStripConditionals(fields:Array<Field>) {
+		for (field in fields) {
+			switch (field.kind) {
+				case FFun(f) if (field.meta.exists(hasMeta)):
+					var exprs:Array<Expr> = [
+						macro if (strip || (stripIfUnavailable && !available)) return "",
+						f.expr
+					];
+					f.expr = macro { $a{exprs} };
+				default:
+			}
+		}
+	}
+	
+	static private inline function hasMeta(meta:MetadataEntry) {
+		return meta.name == ":ansi";
+	}
+	
+	static private function addSequences(pos:Position, fields:Array<Field>) {
 		var tint = TPath({ pack: [], name: "Int" });
 		var tstr = TPath({ pack: [], name: "String" });
 		
@@ -173,78 +289,12 @@ class ANSI {
 						'ANSI sequence: ${s.val}',
 					access: [APublic, AStatic, AInline],
 					kind: kind,
+					meta: [{ name: ":ansi", pos: pos }],
 					pos: pos
 				});
 			}
 		}
-		
-		return fields;
 	}
 	#end
-	
-	private static var values:Map<Attribute, Int> = [
-		Off               => 0,
-		
-		Bold              => 1,
-		Underline         => 4,
-		Blink             => 5,
-		ReverseVideo      => 7,
-		Concealed         => 8,
-		
-		BoldOff           => 22,
-		UnderlineOff      => 24,
-		BlinkOff          => 25,
-		NormalVideo       => 27,
-		ConcealedOff      => 28,
-		
-		Black             => 30,
-		Red               => 31,
-		Green             => 32,
-		Yellow            => 33,
-		Blue              => 34,
-		Magenta           => 35,
-		Cyan              => 36,
-		White             => 37,
-		DefaultForeground => 39,
-		
-		BlackBack         => 40,
-		RedBack           => 41,
-		GreenBack         => 42,
-		YellowBack        => 43,
-		BlueBack          => 44,
-		MagentaBack       => 45,
-		CyanBack          => 46,
-		WhiteBack         => 47,
-		DefaultBackground => 49
-		
-	];
-	
-	public static var attr = Attribute;
-	
-	public static function __init__() {
-		set = Reflect.makeVarArgs(aset);
-	}
-
-	public static var set:Dynamic;
-	public static function aset(attributes:Array<Dynamic>):String {
-		return CSI+[for (arg in attributes) {
-			if (!Std.is(arg, Attribute)) throw "Set argument is not an Attribute: "+arg;
-			values.get(arg);
-		}].join(";")+"m";
-	}
-
-	public inline static function title(str:String):String {
-		return ESCAPE+"]0;" + str + BELL;
-	}
-	
-	/*
-	public static function replaceLine():String {
-		return eraseLine()+moveToColumn();
-	}
-	
-	public static function replaceLastLine():String {
-		return moveUp()+eraseLine()+moveToColumn();
-	}
-	*/
 	
 }
