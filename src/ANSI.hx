@@ -106,9 +106,12 @@ class ANSI {
 	public static var strip:Bool = false;
 	public static var stripIfUnavailable:Bool = true;
 	
-	public static function __init__() {
+	private static var initExec = init();
+
+	public static function init() {
 		set = Reflect.makeVarArgs(aset);
 		available = detectSupport();
+		return true;
 	}
 	
 	@:ansi
@@ -121,7 +124,7 @@ class ANSI {
 
 	private static function detectSupport() {
 		#if sys
-		return if (!(new EReg ("window", "i").match(Sys.systemName()))) {
+		return if (Sys.systemName().toLowerCase().indexOf("window") == -1) {
 			var result = -1;
 			try {
 				var process = new sys.io.Process("tput", [ "colors" ]);
