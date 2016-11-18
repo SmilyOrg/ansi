@@ -101,18 +101,10 @@ class ANSI {
 		
 	];
 	
-	public static var set:Dynamic;
-	public static var available:Bool;
+	public static var set:Dynamic = Reflect.makeVarArgs(aset);
+	public static var available = detectSupport();
 	public static var strip:Bool = false;
 	public static var stripIfUnavailable:Bool = true;
-	
-	private static var initExec = init();
-
-	public static function init() {
-		set = Reflect.makeVarArgs(aset);
-		available = detectSupport();
-		return true;
-	}
 	
 	@:ansi
 	public static function aset(attributes:Array<Dynamic>):String {
