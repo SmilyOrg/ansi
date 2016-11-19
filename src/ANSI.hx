@@ -123,13 +123,17 @@ class ANSI {
 	}
 
 	private static function detectSupport() {
-		#if sys
+		#if (sys || nodejs)
 		return if (Sys.systemName().toLowerCase().indexOf("window") == -1) {
 			var result = -1;
 			try {
+				#if (nodejs && !macro)
+				result = js.node.ChildProcess.spawnSync("tput", ["colors"]).error == null ? 0 : 125;
+				#else
 				var process = new sys.io.Process("tput", [ "colors" ]);
 				result = process.exitCode ();
 				process.close ();
+				#end
 			} catch (e:Dynamic) {};
 			result == 0;
 		} else {
