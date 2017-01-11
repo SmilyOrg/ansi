@@ -1,0 +1,13 @@
+{
+	"name" : "ansi",
+	"url" : "https://github.com/SmilyOrg/ansi",
+	"license" : "MIT",
+	"tags" : ["cross"],
+	"description" : "Haxe utility for working with ANSI escape sequences",
+	"version" : "1.0.0",
+	"releasenote" : "Initial release on haxelib",
+	"contributors" : ["SmilyOrg"],
+	"dependencies" : {},
+	"classPath" : "src"
+}
+
